@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจสอบการจ่ายเงินค่าสอนเสริม</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Navigation -->
+        <div class="flex justify-center mb-6">
+            <div class="bg-white rounded-lg shadow-md p-1 flex">
+                <button 
+                    id="studentViewBtn"
+                    onclick="showStudentView()"
+                    class="px-6 py-2 rounded-md font-semibold transition duration-200 bg-blue-600 text-white"
+                >
+                    🔍 ตรวจสอบการจ่ายเงิน
+                </button>
+                <button 
+                    id="adminViewBtn"
+                    onclick="requestAdminAccess()"
+                    class="px-6 py-2 rounded-md font-semibold transition duration-200 text-gray-600 hover:text-gray-800"
+                >
+                    ⚙️ จัดการข้อมูล
+                </button>
+            </div>
+        </div>
+
+        <!-- Student View -->
+        <div id="studentView">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">ระบบตรวจสอบการจ่ายเงิน</h1>
+                <p class="text-xl text-gray-600">ค่าสอนเสริม ปีการศึกษา 2568</p>
+            </div>
+
+        <!-- Search Form -->
+        <div class="max-w-md mx-auto mb-8">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">กรอกรหัสนักเรียน</h2>
+                <form id="searchForm" class="space-y-4">
+                    <div>
+                        <label for="studentId" class="block text-sm font-medium text-gray-700 mb-2">รหัสนักเรียน</label>
+                        <input 
+                            type="text" 
+                            id="studentId" 
+                            name="studentId"
+                            placeholder="ใส่รหัสประจำตัวนักเรียน"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg"
+                            required
+                        >
+                    </div>
+                    <button 
+                        type="submit"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 transform hover:scale-105"
+                    >
+                        🔍 ตรวจสอบสถานะ
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="max-w-2xl mx-auto hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div id="studentInfo" class="mb-6">
+                    <!-- Student info will be populated here -->
+                </div>
+                
+                <div id="paymentStatus" class="mb-6">
+                    <!-- Payment status will be populated here -->
+                </div>
+
+                <div id="paymentDetails" class="space-y-4">
+                    <!-- Payment details will be populated here -->
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <button 
+                        onclick="resetSearch()"
+                        class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
+                    >
+                        ค้นหาใหม่
+                    </button>
+                </div>
+            </div>
+        </div>
+
+            <!-- Loading -->
+            <div id="loading" class="max-w-md mx-auto text-center hidden">
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600">กำลังค้นหาข้อมูล...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Password Modal -->
+        <div id="passwordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-4">🔐</div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">เข้าสู่ระบบจัดการข้อมูล</h2>
+                    <p class="text-gray-600">กรุณาใส่รหัสผ่านเพื่อเข้าใช้งาน</p>
+                </div>
+                
+                <form id="passwordForm" class="space-y-4">
+                    <div>
+                        <label for="passwordInput" class="block text-sm font-medium text-gray-700 mb-2">รหัสผ่าน</label>
+                        <input 
+                            type="password" 
+                            id="passwordInput"
+                            placeholder="กรุณาใส่รหัสผ่าน"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg"
+                            required
+                        >
+                    </div>
+                    
+                    <div id="passwordError" class="text-red-600 text-sm text-center hidden">
+                        รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button 
+                            type="button"
+                            onclick="closePasswordModal()"
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+                        >
+                            ยกเลิก
+                        </button>
+                        <button 
+                            type="submit"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+                        >
+                            เข้าสู่ระบบ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Admin View -->
+        <div id="adminView" class="hidden">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">ระบบจัดการข้อมูลนักเรียน</h1>
+                <p class="text-xl text-gray-600">เพิ่ม แก้ไข และจัดการข้อมูลการจ่ายเงิน</p>
+            </div>
+
+            <!-- Add Student Form -->
+            <div class="max-w-4xl mx-auto mb-8">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">เพิ่มข้อมูลนักเรียนใหม่</h2>
+                    
+                    <form id="addStudentForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">รหัสนักเรียน</label>
+                                <input 
+                                    type="text" 
+                                    id="newStudentId"
+                                    placeholder="ใส่รหัสประจำตัวนักเรียน"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อ-นามสกุล</label>
+                                <input 
+                                    type="text" 
+                                    id="newStudentName"
+                                    placeholder="เช่น นางสาวสมใจ ใจดี"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">ชั้นเรียน</label>
+                                <input 
+                                    type="text" 
+                                    id="newStudentClass"
+                                    placeholder="เช่น ม.6/1"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4">วิชาเรียนเสริม</h3>
+                            <div id="subjectsContainer">
+                                <div class="subject-row grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
+                                    <div>
+                                        <input 
+                                            type="text" 
+                                            placeholder="ชื่อวิชา"
+                                            class="subject-name w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                    </div>
+                                    <div>
+                                        <input 
+                                            type="number" 
+                                            placeholder="ค่าเรียน (บาท)"
+                                            class="subject-fee w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                    </div>
+                                    <div>
+                                        <select class="subject-status w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                            <option value="false">ยังไม่จ่าย</option>
+                                            <option value="true">จ่ายแล้ว</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button 
+                                            type="button" 
+                                            onclick="removeSubjectRow(this)"
+                                            class="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition duration-200"
+                                        >
+                                            ลบ
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button 
+                                type="button" 
+                                onclick="addSubjectRow()"
+                                class="mb-4 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition duration-200"
+                            >
+                                + เพิ่มวิชา
+                            </button>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <button 
+                                type="submit"
+                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+                            >
+                                💾 บันทึกข้อมูล
+                            </button>
+                            <button 
+                                type="button"
+                                onclick="clearForm()"
+                                class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200"
+                            >
+                                🗑️ ล้างฟอร์ม
+                            </button>
+                        </div>
+                </div>
+            </div>
+
+            <!-- Data Management Section -->
+            <div class="max-w-4xl mx-auto mb-8">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">จัดการข้อมูล</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button 
+                            onclick="exportData()"
+                            class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                        >
+                            📁 ส่งออกข้อมูล
+                        </button>
+                        
+                        <button 
+                            onclick="loadSampleData()"
+                            class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                        >
+                            📋 โหลดข้อมูลตัวอย่าง
+                        </button>
+                        
+                        <button 
+                            onclick="clearAllData()"
+                            class="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                        >
+                            🗑️ ลบข้อมูลทั้งหมด
+                        </button>
+                    </div>
+                    
+                    <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <h3 class="font-semibold text-blue-800 mb-2">💡 คำแนะนำการใช้งาน:</h3>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• ข้อมูลจะถูกบันทึกอัตโนมัติในเบราว์เซอร์ของคุณ</li>
+                            <li>• ใช้ "ส่งออกข้อมูล" เพื่อสำรองข้อมูลเป็นไฟล์</li>
+                            <li>• "โหลดข้อมูลตัวอย่าง" จะเพิ่มนักเรียนตัวอย่างเพื่อทดสอบ</li>
+                            <li>• ข้อมูลจะคงอยู่แม้ปิดเบราว์เซอร์แล้วเปิดใหม่</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students List -->
+            <div class="max-w-6xl mx-auto">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800">รายชื่อนักเรียนทั้งหมด</h2>
+                        <div class="text-sm text-gray-600">
+                            จำนวนนักเรียน: <span id="totalStudents">0</span> คน
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full table-auto">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">รหัสนักเรียน</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">ชื่อ-นามสกุล</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">ชั้น</th>
+                                    <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">สถานะ</th>
+                                    <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">ยอดรวม</th>
+                                    <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTableBody">
+                                <!-- Students will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data storage functions
+        function saveDataToStorage() {
+            try {
+                localStorage.setItem('studentPaymentData', JSON.stringify(studentData));
+                console.log('✅ บันทึกข้อมูลลง Local Storage สำเร็จ');
+            } catch (error) {
+                console.error('❌ ไม่สามารถบันทึกข้อมูลได้:', error);
+            }
+        }
+
+        function loadDataFromStorage() {
+            try {
+                const savedData = localStorage.getItem('studentPaymentData');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    Object.assign(studentData, parsedData);
+                    console.log('✅ โหลดข้อมูลจาก Local Storage สำเร็จ');
+                    return true;
+                }
+            } catch (error) {
+                console.error('❌ ไม่สามารถโหลดข้อมูลได้:', error);
+            }
+            return false;
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ ต้องการลบข้อมูลทั้งหมดหรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้!')) {
+                localStorage.removeItem('studentPaymentData');
+                Object.keys(studentData).forEach(key => delete studentData[key]);
+                updateStudentsTable();
+                alert('🗑️ ลบข้อมูลทั้งหมดเรียบร้อยแล้ว');
+            }
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(studentData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `student_payment_data_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            alert('📁 ส่งออกข้อมูลเรียบร้อยแล้ว');
+        }
+
+        // Initialize student data (will be loaded from storage or use sample data)
+        let studentData = {};
+
+        // Sample data (used only if no saved data exists)
+        const sampleData = {
+            '65001234': {
+                name: 'นางสาวสมใจ ใจดี',
+                class: 'ม.6/1',
+                subjects: [
+                    { name: 'คณิตศาสตร์เพิ่มเติม', fee: 2500, paid: true, date: '15/08/2567' },
+                    { name: 'ฟิสิกส์เพิ่มเติม', fee: 2000, paid: true, date: '15/08/2567' },
+                    { name: 'เคมีเพิ่มเติม', fee: 2000, paid: false, date: null }
+                ]
+            },
+            '65005678': {
+                name: 'นายสมชาย รักเรียน',
+                class: 'ม.5/2',
+                subjects: [
+                    { name: 'ภาษาอังกฤษเพิ่มเติม', fee: 1800, paid: true, date: '20/08/2567' },
+                    { name: 'คณิตศาสตร์เพิ่มเติม', fee: 2500, paid: true, date: '20/08/2567' }
+                ]
+            },
+            '65009999': {
+                name: 'นางสาวมาลี ขยันเรียน',
+                class: 'ม.4/3',
+                subjects: [
+                    { name: 'ภาษาไทยเพิ่มเติม', fee: 1500, paid: false, date: null },
+                    { name: 'สังคมศึกษาเพิ่มเติม', fee: 1500, paid: false, date: null }
+                ]
+            }
+        };
+
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const studentId = document.getElementById('studentId').value.trim();
+            
+            if (!studentId) {
+                alert('กรุณากรอกรหัสนักเรียน');
+                return;
+            }
+
+            showLoading();
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                searchStudent(studentId);
+            }, 1500);
+        });
+
+        function showLoading() {
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function searchStudent(studentId) {
+            hideLoading();
+            
+            const student = studentData[studentId];
+            
+            if (!student) {
+                showNotFound();
+                return;
+            }
+
+            displayResults(studentId, student);
+        }
+
+        function showNotFound() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="text-red-500 text-6xl mb-4">❌</div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">ไม่พบข้อมูลนักเรียน</h3>
+                    <p class="text-gray-600 mb-6">กรุณาตรวจสอบรหัสนักเรียนและลองใหม่อีกครั้ง</p>
+                    <button 
+                        onclick="resetSearch()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200"
+                    >
+                        ค้นหาใหม่
+                    </button>
+                </div>
+            `;
+            resultsDiv.classList.remove('hidden');
+        }
+
+        function displayResults(studentId, student) {
+            const totalFee = student.subjects.reduce((sum, subject) => sum + subject.fee, 0);
+            const paidFee = student.subjects.filter(s => s.paid).reduce((sum, subject) => sum + subject.fee, 0);
+            const unpaidFee = totalFee - paidFee;
+            const allPaid = unpaidFee === 0;
+
+            // Student Info
+            document.getElementById('studentInfo').innerHTML = `
+                <div class="text-center border-b border-gray-200 pb-4">
+                    <h3 class="text-2xl font-bold text-gray-800">${student.name}</h3>
+                    <p class="text-gray-600">รหัส: ${studentId} | ชั้น: ${student.class}</p>
+                </div>
+            `;
+
+            // Payment Status
+            document.getElementById('paymentStatus').innerHTML = `
+                <div class="text-center p-4 rounded-lg ${allPaid ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
+                    <div class="text-4xl mb-2">${allPaid ? '✅' : '⚠️'}</div>
+                    <h4 class="text-xl font-semibold ${allPaid ? 'text-green-800' : 'text-red-800'} mb-2">
+                        ${allPaid ? 'ชำระเงินครบถ้วนแล้ว' : 'ยังชำระเงินไม่ครบ'}
+                    </h4>
+                    <div class="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-gray-600">ค่าเรียนทั้งหมด</p>
+                            <p class="font-semibold text-lg">${totalFee.toLocaleString()} บาท</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600">ชำระแล้ว</p>
+                            <p class="font-semibold text-lg text-green-600">${paidFee.toLocaleString()} บาท</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-600">คงค้าง</p>
+                            <p class="font-semibold text-lg text-red-600">${unpaidFee.toLocaleString()} บาท</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Payment Details
+            const detailsHTML = student.subjects.map(subject => `
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div class="flex-1">
+                        <h5 class="font-semibold text-gray-800">${subject.name}</h5>
+                        <p class="text-gray-600">ค่าเรียน: ${subject.fee.toLocaleString()} บาท</p>
+                    </div>
+                    <div class="text-right">
+                        ${subject.paid ? 
+                            `<div class="text-green-600 font-semibold">✅ ชำระแล้ว</div>
+                             <div class="text-sm text-gray-500">วันที่: ${subject.date}</div>` :
+                            `<div class="text-red-600 font-semibold">❌ ยังไม่ชำระ</div>
+                             <div class="text-sm text-gray-500">รอการชำระ</div>`
+                        }
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('paymentDetails').innerHTML = `
+                <h4 class="text-lg font-semibold text-gray-800 mb-3">รายละเอียดการชำระเงิน</h4>
+                ${detailsHTML}
+            `;
+
+            document.getElementById('results').classList.remove('hidden');
+        }
+
+        function resetSearch() {
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('studentId').value = '';
+            document.getElementById('studentId').focus();
+        }
+
+        // Admin access control
+        const ADMIN_CODE = '29072541';
+        let isAdminAuthenticated = false;
+
+        function requestAdminAccess() {
+            if (isAdminAuthenticated) {
+                showAdminView();
+                return;
+            }
+
+            // Show password modal
+            document.getElementById('passwordModal').classList.remove('hidden');
+            document.getElementById('passwordInput').focus();
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.add('hidden');
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('passwordError').classList.add('hidden');
+        }
+
+        // Password form handler
+        document.getElementById('passwordForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const enteredPassword = document.getElementById('passwordInput').value;
+            
+            if (enteredPassword === ADMIN_CODE) {
+                isAdminAuthenticated = true;
+                closePasswordModal();
+                showAdminView();
+                
+                // Show success message
+                setTimeout(() => {
+                    alert('✅ เข้าสู่ระบบจัดการข้อมูลสำเร็จ! 🎉');
+                }, 300);
+            } else {
+                // Show error message
+                document.getElementById('passwordError').classList.remove('hidden');
+                document.getElementById('passwordInput').value = '';
+                document.getElementById('passwordInput').focus();
+            }
+        });
+
+        // View switching functions
+        function showStudentView() {
+            document.getElementById('studentView').classList.remove('hidden');
+            document.getElementById('adminView').classList.add('hidden');
+            document.getElementById('studentViewBtn').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('studentViewBtn').classList.remove('text-gray-600');
+            document.getElementById('adminViewBtn').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('adminViewBtn').classList.add('text-gray-600');
+        }
+
+        function showAdminView() {
+            document.getElementById('studentView').classList.add('hidden');
+            document.getElementById('adminView').classList.remove('hidden');
+            document.getElementById('adminViewBtn').classList.add('bg-blue-600', 'text-white');
+            document.getElementById('adminViewBtn').classList.remove('text-gray-600');
+            document.getElementById('studentViewBtn').classList.remove('bg-blue-600', 'text-white');
+            document.getElementById('studentViewBtn').classList.add('text-gray-600');
+            updateStudentsTable();
+        }
+
+        // Admin functions
+        function addSubjectRow() {
+            const container = document.getElementById('subjectsContainer');
+            const newRow = document.createElement('div');
+            newRow.className = 'subject-row grid grid-cols-1 md:grid-cols-4 gap-4 mb-3';
+            newRow.innerHTML = `
+                <div>
+                    <input 
+                        type="text" 
+                        placeholder="ชื่อวิชา"
+                        class="subject-name w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                </div>
+                <div>
+                    <input 
+                        type="number" 
+                        placeholder="ค่าเรียน (บาท)"
+                        class="subject-fee w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                </div>
+                <div>
+                    <select class="subject-status w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="false">ยังไม่จ่าย</option>
+                        <option value="true">จ่ายแล้ว</option>
+                    </select>
+                </div>
+                <div>
+                    <button 
+                        type="button" 
+                        onclick="removeSubjectRow(this)"
+                        class="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition duration-200"
+                    >
+                        ลบ
+                    </button>
+                </div>
+            `;
+            container.appendChild(newRow);
+        }
+
+        function removeSubjectRow(button) {
+            const container = document.getElementById('subjectsContainer');
+            if (container.children.length > 1) {
+                button.closest('.subject-row').remove();
+            } else {
+                alert('ต้องมีอย่างน้อย 1 วิชา');
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('addStudentForm').reset();
+            const container = document.getElementById('subjectsContainer');
+            // Keep only the first subject row
+            while (container.children.length > 1) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // Add student form handler
+        document.getElementById('addStudentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const studentId = document.getElementById('newStudentId').value.trim();
+            const studentName = document.getElementById('newStudentName').value.trim();
+            const studentClass = document.getElementById('newStudentClass').value.trim();
+            
+            if (studentData[studentId]) {
+                alert('รหัสนักเรียนนี้มีอยู่แล้ว กรุณาใช้รหัสอื่น');
+                return;
+            }
+
+            // Collect subjects data
+            const subjectRows = document.querySelectorAll('.subject-row');
+            const subjects = [];
+            
+            subjectRows.forEach(row => {
+                const name = row.querySelector('.subject-name').value.trim();
+                const fee = parseInt(row.querySelector('.subject-fee').value) || 0;
+                const paid = row.querySelector('.subject-status').value === 'true';
+                
+                if (name && fee > 0) {
+                    subjects.push({
+                        name: name,
+                        fee: fee,
+                        paid: paid,
+                        date: paid ? new Date().toLocaleDateString('th-TH') : null
+                    });
+                }
+            });
+
+            if (subjects.length === 0) {
+                alert('กรุณาเพิ่มข้อมูลวิชาอย่างน้อย 1 วิชา');
+                return;
+            }
+
+            // Add to studentData
+            studentData[studentId] = {
+                name: studentName,
+                class: studentClass,
+                subjects: subjects
+            };
+
+            // Auto-save to storage
+            saveDataToStorage();
+
+            alert('เพิ่มข้อมูลนักเรียนเรียบร้อยแล้ว');
+            clearForm();
+            updateStudentsTable();
+        });
+
+        function updateStudentsTable() {
+            const tbody = document.getElementById('studentsTableBody');
+            const totalStudentsSpan = document.getElementById('totalStudents');
+            
+            tbody.innerHTML = '';
+            
+            const studentIds = Object.keys(studentData);
+            totalStudentsSpan.textContent = studentIds.length;
+
+            studentIds.forEach(studentId => {
+                const student = studentData[studentId];
+                const totalFee = student.subjects.reduce((sum, subject) => sum + subject.fee, 0);
+                const paidFee = student.subjects.filter(s => s.paid).reduce((sum, subject) => sum + subject.fee, 0);
+                const allPaid = paidFee === totalFee;
+
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-mono text-sm">${studentId}</td>
+                    <td class="px-4 py-3">${student.name}</td>
+                    <td class="px-4 py-3">${student.class}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${allPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${allPaid ? '✅ ครบ' : '❌ ไม่ครบ'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="text-sm">
+                            <div class="font-semibold">${totalFee.toLocaleString()} บาท</div>
+                            <div class="text-gray-500">(จ่าย ${paidFee.toLocaleString()})</div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="flex gap-2 justify-center">
+                            <button 
+                                onclick="editStudent('${studentId}')"
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs transition duration-200"
+                            >
+                                แก้ไข
+                            </button>
+                            <button 
+                                onclick="deleteStudent('${studentId}')"
+                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs transition duration-200"
+                            >
+                                ลบ
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function editStudent(studentId) {
+            const student = studentData[studentId];
+            if (!student) return;
+
+            // Fill form with existing data
+            document.getElementById('newStudentId').value = studentId;
+            document.getElementById('newStudentName').value = student.name;
+            document.getElementById('newStudentClass').value = student.class;
+
+            // Clear existing subject rows
+            const container = document.getElementById('subjectsContainer');
+            container.innerHTML = '';
+
+            // Add subject rows with existing data
+            student.subjects.forEach((subject, index) => {
+                const row = document.createElement('div');
+                row.className = 'subject-row grid grid-cols-1 md:grid-cols-4 gap-4 mb-3';
+                row.innerHTML = `
+                    <div>
+                        <input 
+                            type="text" 
+                            placeholder="ชื่อวิชา"
+                            value="${subject.name}"
+                            class="subject-name w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                    </div>
+                    <div>
+                        <input 
+                            type="number" 
+                            placeholder="ค่าเรียน (บาท)"
+                            value="${subject.fee}"
+                            class="subject-fee w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                    </div>
+                    <div>
+                        <select class="subject-status w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="false" ${!subject.paid ? 'selected' : ''}>ยังไม่จ่าย</option>
+                            <option value="true" ${subject.paid ? 'selected' : ''}>จ่ายแล้ว</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button 
+                            type="button" 
+                            onclick="removeSubjectRow(this)"
+                            class="w-full bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition duration-200"
+                        >
+                            ลบ
+                        </button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            // Delete the old record (will be re-added when form is submitted)
+            delete studentData[studentId];
+            
+            // Scroll to form
+            document.getElementById('addStudentForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function deleteStudent(studentId) {
+            if (confirm(`ต้องการลบข้อมูลนักเรียนรหัส ${studentId} หรือไม่?`)) {
+                delete studentData[studentId];
+                saveDataToStorage(); // Auto-save after deletion
+                updateStudentsTable();
+                alert('ลบข้อมูลเรียบร้อยแล้ว');
+            }
+        }
+
+        function loadSampleData() {
+            if (confirm('ต้องการโหลดข้อมูลตัวอย่างหรือไม่? ข้อมูลนี้จะถูกเพิ่มเข้าไปในระบบ')) {
+                Object.assign(studentData, sampleData);
+                saveDataToStorage();
+                updateStudentsTable();
+                alert('โหลดข้อมูลตัวอย่างเรียบร้อยแล้ว');
+            }
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Try to load data from storage first
+            if (!loadDataFromStorage()) {
+                // If no saved data, use sample data
+                console.log('ไม่พบข้อมูลที่บันทึกไว้ ใช้ข้อมูลตัวอย่าง');
+                Object.assign(studentData, sampleData);
+                saveDataToStorage();
+            }
+            updateStudentsTable();
+        });
+
+        // Sample student IDs for testing
+        console.log('รหัสนักเรียนตัวอย่างสำหรับทดสอบ:');
+        console.log('65001234 - นักเรียนที่ชำระบางวิชา');
+        console.log('65005678 - นักเรียนที่ชำระครบ');
+        console.log('65009999 - นักเรียนที่ยังไม่ชำระ');
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98333acee16afd22',t:'MTc1ODU1OTA3Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
